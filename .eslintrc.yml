@@ -1,14 +1,13 @@
 ---
 extends:
-  - neon/common
-  - neon/node
-  - neon/typescript
-  - neon/prettier
-  - plugin:jest/recommended
-  - plugin:jest/style
+  - eslint:recommended
+  - plugin:@typescript-eslint/recommended
+  - plugin:@typescript-eslint/recommended-requiring-type-checking
+  - plugin:vitest/recommended
+  - plugin:prettier/recommended
 
 plugins:
-  - jest
+  - vitest
   - prettier
 
 parserOptions:
@@ -18,41 +17,10 @@ parserOptions:
     - test/tsconfig.json
 
 rules:
-  prettier/prettier:
-    - error
-    - endOfLine: auto
-  no-duplicate-imports: off
-  curly:
-    - error
-    - multi-line
-  import/extensions: off
-  id-length: off
-  unicorn/prefer-code-point: off
-  unicorn/consistent-function-scoping:
-    - error
-    - checkArrowFunctions: false
-  tsdoc/syntax: off
-  jsdoc/check-param-names:
-    - error
-    - checkDestructured: false
-  '@typescript-eslint/consistent-type-definitions':
-    - error
-    - interface
-  '@typescript-eslint/prefer-literal-enum-member':
-    - error
-    - allowBitwiseExpressions: true
-  '@typescript-eslint/no-use-before-define': off
-  '@typescript-eslint/no-duplicate-imports': error
-  # The following rule conflicts with Prettier in certain cases.
-  # Also see https://github.com/typescript-eslint/typescript-eslint/issues/1824.
-  '@typescript-eslint/indent': off
-  '@typescript-eslint/no-misused-promises':
-    - error
-    - checksVoidReturn: false
   '@typescript-eslint/no-unnecessary-condition':
     - error
     - allowConstantLoopConditions: true
-  '@typescript-eslint/no-throw-literal': off
+  '@typescript-eslint/no-non-null-assertion': off
   '@typescript-eslint/naming-convention':
     - error
     - selector:

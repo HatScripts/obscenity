@@ -23,7 +23,6 @@ LICENSE.md
 .eslintrc.yml
 .gitattributes
 .gitignore
-.lintstagedrc.json
 .prettierignore
 .prettierrc.json
 jest.config.ts
