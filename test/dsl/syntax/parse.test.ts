@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import '../../../src/dsl/syntax/parse';
 import { Parser } from '../../../src/dsl/syntax/parse';
 import { B, ast, charSet, lit, opt, rep, wildcard } from './__helpers__/ast';
 
