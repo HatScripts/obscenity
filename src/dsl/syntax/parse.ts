@@ -72,7 +72,7 @@ export class Parser {
 			case '+':
 				if (this.offset > 0) {
 					this.error(
-						"'+' can only be used after a character; use a backslash '\\' to escape if a literal '+' is desired",
+						"'+' can only be used after a character, not a wildcard/optional/char set; use a backslash '\\' to escape if a literal '+' is desired",
 					);
 				} else {
 					this.error(
@@ -84,10 +84,11 @@ export class Parser {
 				while (!this.done() && !metachars.includes(this.peek())) chars.push(this.nextSkipEscape());
 				if (this.eat('+')) {
 					const last = chars.pop()!;
-					yield { kind: SyntaxKind.Literal, chars };
+					if (chars.length > 0) yield { kind: SyntaxKind.Literal, chars };
 					yield { kind: SyntaxKind.Repetition, char: last };
+				} else {
+					yield { kind: SyntaxKind.Literal, chars };
 				}
-				yield { kind: SyntaxKind.Literal, chars };
 			}
 		}
 		/* eslint-enable no-fallthrough */
@@ -113,7 +114,12 @@ export class Parser {
 
 		const inner: Node[] = [];
 		while (!this.done()) {
-			if (this.eat(']')) return { kind: SyntaxKind.Optional, inner };
+			if (this.eat(']')) {
+				if (inner.length === 0) {
+					this.error('empty optional expressions are not permitted', { col: this.col - 1, offset: this.offset - 1 });
+				}
+				return { kind: SyntaxKind.Optional, inner };
+			}
 			inner.push(...this.parseAny());
 		}
 		this.error('unclosed optional expression', openPos);
@@ -126,29 +132,35 @@ export class Parser {
 		let needComma = false;
 		const ranges: CharRange[] = [];
 		while (!this.done()) {
-			if (this.eat('}')) return { kind: SyntaxKind.CharSet, ranges };
-			if (needComma && !this.eat(',')) this.error('expected comma separating elements of char set');
+			if (this.eat('}')) {
+				if (ranges.length === 0) {
+					this.error('empty character sets are not permitted', { col: this.col - 1, offset: this.offset - 1 });
+				}
+				return { kind: SyntaxKind.CharSet, ranges };
+			}
+			if (needComma && !this.eat(',')) this.error('expected comma separating elements of character set');
 
-			const c = this.next();
+			const lo = this.next();
+			let hi = lo;
 			if (this.eat('-')) {
-				// this is a character range; c is lower bound and next char is upper bound
-				if (this.done()) this.error('missing upper bound for char range');
-				ranges.push({ lo: c, hi: this.next() });
-			} else {
-				ranges.push({ lo: c, hi: c });
+				// next char is upper bound
+				if (this.done()) this.error("expected character following '-' in character set");
+				hi = this.next();
 			}
 
+			ranges.push({ lo, hi });
 			needComma = true;
 		}
 		this.error('unclosed character set', openPos);
 	}
 
 	private peek() {
-		return this.chars[this.offset + 1];
+		return this.chars[this.offset];
 	}
 
 	private next() {
-		const c = this.chars[++this.offset];
+		const c = this.chars[this.offset++];
+		this.col++;
 		if (c === '\n') {
 			this.line++;
 			this.col = 0;
