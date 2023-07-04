@@ -40,7 +40,7 @@ export function parseUntrustedPattern(
 
 	const depth = determineOptionalNestingDepth(ast);
 	if (depth > maxOptionalNestingDepth) {
-		throw new ExcessiveOptionalNesting(pattern, maxOptionalNestingDepth, depth);
+		throw new ExcessiveOptionalNestingError(pattern, maxOptionalNestingDepth, depth);
 	}
 	return ast;
 }
@@ -102,7 +102,7 @@ export function determineOptionalNestingDepth(ast: Ast) {
 	return ast.nodes.reduce((max, node) => Math.max(max, visit(node)), 0);
 }
 
-export class ExcessiveOptionalNesting extends Error {
+export class ExcessiveOptionalNestingError extends Error {
 	public readonly pattern: string;
 	public readonly depthLimit: number;
 	public readonly actualDepth: number;
