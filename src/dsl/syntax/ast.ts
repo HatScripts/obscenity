@@ -15,14 +15,13 @@ export enum SyntaxKind {
 	Wildcard,
 	Optional,
 	CharSet,
-	Repetition,
 }
 
-export type Node = Literal | Wildcard | Optional | CharSet | Repetition;
+export type Node = Literal | Wildcard | Optional | CharSet;
 
 export interface Literal {
 	kind: SyntaxKind.Literal;
-	chars: string[];
+	chars: number[];
 }
 
 export interface Wildcard {
@@ -31,7 +30,7 @@ export interface Wildcard {
 
 export interface Optional {
 	kind: SyntaxKind.Optional;
-	inner: Node[];
+	children: Node[];
 }
 
 export interface CharSet {
@@ -43,11 +42,6 @@ export interface CharSet {
  * A range of characters, including both endpoints.
  */
 export interface CharRange {
-	lo: string;
-	hi: string;
-}
-
-export interface Repetition {
-	kind: SyntaxKind.Repetition;
-	char: string;
+	lo: number;
+	hi: number;
 }

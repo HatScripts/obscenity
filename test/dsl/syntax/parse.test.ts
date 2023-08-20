@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Parser } from '../../../src/dsl/syntax/parse';
-import { B, ast, charSet, lit, opt, rep, wildcard } from './__helpers__/ast';
+import { B, ast, charSet, lit, opt, wildcard } from './__helpers__/ast';
 
 const r = String.raw;
 
@@ -57,53 +57,6 @@ describe('literals', () => {
 	});
 });
 
-describe('repetitions', () => {
-	it('should parse a simple repetition', () => {
-		const pattern = 'f+';
-		const expected = ast(rep('f'), pattern, B.None);
-		expect(parse(pattern)).toStrictEqual(expected);
-	});
-
-	it('should parse repetition of an escaped metachar', () => {
-		const pattern = r`\]+`;
-		const expected = ast(rep(']'), pattern, B.None);
-		expect(parse(pattern)).toStrictEqual(expected);
-	});
-
-	it('should parse repetitions following literals', () => {
-		const pattern = 'abcdefg+';
-		const expected = ast([lit('abcdef'), rep('g')], pattern, B.None);
-		expect(parse(pattern)).toStrictEqual(expected);
-	});
-
-	describe('syntax errors', () => {
-		it("should reject a lone '+' at the start of a pattern", () => {
-			const pattern = '+bar';
-			expect(() => parse(pattern)).toThrow("1:0: '+'");
-		});
-
-		it("should reject '+' used after a wildcard", () => {
-			const pattern = '?+';
-			expect(() => parse(pattern)).toThrow("1:1: '+'");
-		});
-
-		it("should reject '+' used after an optional", () => {
-			const pattern = '[foo]+';
-			expect(() => parse(pattern)).toThrow("1:5: '+'");
-		});
-
-		it("should reject '+' used after a char set", () => {
-			const pattern = '{a,b}+';
-			expect(() => parse(pattern)).toThrow("1:5: '+'");
-		});
-
-		it('should reject multiple + in sequence', () => {
-			const pattern = 'a+++';
-			expect(() => parse(pattern)).toThrow("1:2: '+'");
-		});
-	});
-});
-
 describe('wildcards', () => {
 	it('should parse a single wildcard', () => {
 		const pattern = '?';
@@ -134,18 +87,6 @@ describe('optionals', () => {
 	it('should parse an optional containing a wildcard', () => {
 		const pattern = '[?]';
 		const expected = ast(opt(wildcard()), pattern, B.None);
-		expect(parse(pattern)).toStrictEqual(expected);
-	});
-
-	it('should parse an optional containing a repetition', () => {
-		const pattern = '[d+]';
-		const expected = ast(opt(rep('d')), pattern, B.None);
-		expect(parse(pattern)).toStrictEqual(expected);
-	});
-
-	it('should parse an optional containing a literal and repetition in sequence', () => {
-		const pattern = '[foobar+]';
-		const expected = ast(opt([lit('fooba'), rep('r')]), pattern, B.None);
 		expect(parse(pattern)).toStrictEqual(expected);
 	});
 
@@ -268,16 +209,16 @@ describe('boundary assertions', () => {
 it('should support parsing multiple patterns with same Parser instance', () => {
 	const parser = new Parser();
 
-	const pattern0 = '|{h,i,𝌆} [[there+]] wor?d';
+	const pattern0 = '|{h,i,𝌆} [[there?]] wor?d';
 	const expected0 = ast(
-		[charSet(['h', 'i', '𝌆']), lit(' '), opt(opt([lit('ther'), rep('e')])), lit(' wor'), wildcard(), lit('d')],
+		[charSet(['h', 'i', '𝌆']), lit(' '), opt(opt([lit('ther'), opt(lit('e'))])), lit(' wor'), wildcard(), lit('d')],
 		pattern0,
 		B.Start,
 	);
 	expect(parser.parse(pattern0)).toStrictEqual(expected0);
 
-	const pattern1 = 'bar+|';
-	const expected1 = ast([lit('ba'), rep('r')], pattern1, B.End);
+	const pattern1 = 'bar?|';
+	const expected1 = ast([lit('ba'), opt(lit('r'))], pattern1, B.End);
 	expect(parser.parse(pattern1)).toStrictEqual(expected1);
 });
 

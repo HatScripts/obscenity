@@ -1,3 +1,4 @@
+import { charValue } from '../../util/char';
 import type { Ast, CharRange, CharSet, Node, Optional, Wildcard } from './ast';
 import { BoundaryAssertion, SyntaxKind } from './ast';
 import * as assert from 'node:assert';
@@ -17,7 +18,7 @@ export interface Position {
 	offset: number;
 }
 
-export const metachars = ['{', '}', '[', ']', '+', '?', '|'];
+export const metachars = ['{', '}', '[', ']', '?', '|'];
 
 export class Parser {
 	private chars: string[] = [];
@@ -37,7 +38,7 @@ export class Parser {
 		this.chars = chars;
 
 		const nodes: Node[] = [];
-		while (!this.done()) nodes.push(...this.parseAny());
+		while (!this.done()) nodes.push(this.parseAny());
 		return { source: pattern, nodes, boundaryAssertions };
 	}
 
@@ -54,10 +55,10 @@ export class Parser {
 		return assertions;
 	}
 
-	private *parseAny(): Generator<Node> {
-		if (this.at('?')) return yield this.parseWildcard();
-		if (this.at('[')) return yield this.parseOpt();
-		if (this.at('{')) return yield this.parseCharSet();
+	private parseAny(): Node {
+		if (this.at('?')) return this.parseWildcard();
+		if (this.at('[')) return this.parseOpt();
+		if (this.at('{')) return this.parseCharSet();
 
 		/* eslint-disable no-fallthrough */
 		switch (this.peek()) {
@@ -69,26 +70,10 @@ export class Parser {
 				this.error(
 					"boundary assertions are only permitted at start/end of pattern; use a backslash '\\' to escape if a literal '|' is desired",
 				);
-			case '+':
-				if (this.offset > 0) {
-					this.error(
-						"'+' can only be used after a character, not a wildcard/optional/char set; use a backslash '\\' to escape if a literal '+' is desired",
-					);
-				} else {
-					this.error(
-						"'+' is a special character denoting repetition; use a backslash '\\' to escape if a literal '+' is desired",
-					);
-				}
 			default: {
-				const chars: string[] = [];
-				while (!this.done() && !metachars.includes(this.peek())) chars.push(this.nextSkipEscape());
-				if (this.eat('+')) {
-					const last = chars.pop()!;
-					if (chars.length > 0) yield { kind: SyntaxKind.Literal, chars };
-					yield { kind: SyntaxKind.Repetition, char: last };
-				} else {
-					yield { kind: SyntaxKind.Literal, chars };
-				}
+				const chars: number[] = [];
+				while (!this.done() && !metachars.includes(this.peek())) chars.push(charValue(this.nextSkipEscape()));
+				return { kind: SyntaxKind.Literal, chars };
 			}
 		}
 		/* eslint-enable no-fallthrough */
@@ -112,15 +97,15 @@ export class Parser {
 		const openPos = this.pos();
 		assert.ok(this.eat('['));
 
-		const inner: Node[] = [];
+		const children: Node[] = [];
 		while (!this.done()) {
 			if (this.eat(']')) {
-				if (inner.length === 0) {
+				if (children.length === 0) {
 					this.error('empty optional expressions are not permitted', { col: this.col - 1, offset: this.offset - 1 });
 				}
-				return { kind: SyntaxKind.Optional, inner };
+				return { kind: SyntaxKind.Optional, children };
 			}
-			inner.push(...this.parseAny());
+			children.push(this.parseAny());
 		}
 		this.error('unclosed optional expression', openPos);
 	}
@@ -140,12 +125,12 @@ export class Parser {
 			}
 			if (needComma && !this.eat(',')) this.error('expected comma separating elements of character set');
 
-			const lo = this.next();
+			const lo = charValue(this.next());
 			let hi = lo;
 			if (this.eat('-')) {
 				// next char is upper bound
 				if (this.done()) this.error("expected character following '-' in character set");
-				hi = this.next();
+				hi = charValue(this.next());
 			}
 
 			ranges.push({ lo, hi });

@@ -28,8 +28,4 @@ describe('patternEscape', () => {
 	it("should escape '|'", () => {
 		expect(patternEscape('|foo|bar|baz|')).toBe(r`\|foo\|bar\|baz\|`);
 	});
-
-	it("should escape '+'", () => {
-		expect(patternEscape('+abc+ d ++')).toBe(r`\+abc\+ d \+\+`);
-	});
 });

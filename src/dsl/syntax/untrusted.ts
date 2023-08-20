@@ -7,9 +7,8 @@ export enum SpecialPatternSyntax {
 	Wildcards = 1 << 0,
 	Optionals = 1 << 1,
 	CharSets = 1 << 2,
-	Repetitions = 1 << 3,
-	BoundaryAssertions = 1 << 4,
-	All = Optionals | Wildcards | CharSets | Repetitions | BoundaryAssertions,
+	BoundaryAssertions = 1 << 3,
+	All = Optionals | Wildcards | CharSets | BoundaryAssertions,
 }
 
 export function printSyntax(syntax: SpecialPatternSyntax) {
@@ -17,7 +16,6 @@ export function printSyntax(syntax: SpecialPatternSyntax) {
 	if (syntax & SpecialPatternSyntax.Wildcards) items.push('wildcards');
 	if (syntax & SpecialPatternSyntax.Optionals) items.push('optional expressions');
 	if (syntax & SpecialPatternSyntax.CharSets) items.push('character sets');
-	if (syntax & SpecialPatternSyntax.Repetitions) items.push('repetitions');
 	if (syntax & SpecialPatternSyntax.BoundaryAssertions) items.push('boundary assertions');
 	return items.join(', ');
 }
@@ -59,16 +57,14 @@ export class PatternTooLongError extends Error {
 }
 
 export function detectUsedSyntax(ast: Ast) {
-	function visit(node: Node): SpecialPatternSyntax {
+	function usedSyntax(node: Node): SpecialPatternSyntax {
 		switch (node.kind) {
 			case SyntaxKind.Optional:
-				return node.inner.reduce((syntax, node) => syntax | visit(node), SpecialPatternSyntax.Optionals);
+				return node.children.reduce((syntax, node) => syntax | usedSyntax(node), SpecialPatternSyntax.Optionals);
 			case SyntaxKind.Wildcard:
 				return SpecialPatternSyntax.Wildcards;
 			case SyntaxKind.CharSet:
 				return SpecialPatternSyntax.CharSets;
-			case SyntaxKind.Repetition:
-				return SpecialPatternSyntax.Repetitions;
 			case SyntaxKind.Literal:
 				return SpecialPatternSyntax.None;
 		}
@@ -76,7 +72,7 @@ export function detectUsedSyntax(ast: Ast) {
 
 	let syntax = SpecialPatternSyntax.None;
 	if (ast.boundaryAssertions !== BoundaryAssertion.None) syntax |= SpecialPatternSyntax.BoundaryAssertions;
-	return syntax | ast.nodes.reduce((syntax, node) => syntax | visit(node), SpecialPatternSyntax.None);
+	return syntax | ast.nodes.reduce((syntax, node) => syntax | usedSyntax(node), SpecialPatternSyntax.None);
 }
 
 export class DisallowedSyntaxError extends Error {
@@ -95,11 +91,12 @@ export class DisallowedSyntaxError extends Error {
 }
 
 export function determineOptionalNestingDepth(ast: Ast) {
-	function visit(node: Node): number {
-		if (node.kind === SyntaxKind.Optional) return node.inner.reduce((max, node) => Math.max(max, visit(node)), 0) + 1;
+	function nestingDepth(node: Node): number {
+		if (node.kind === SyntaxKind.Optional)
+			return node.children.reduce((max, node) => Math.max(max, nestingDepth(node)), 0) + 1;
 		return 0;
 	}
-	return ast.nodes.reduce((max, node) => Math.max(max, visit(node)), 0);
+	return ast.nodes.reduce((max, node) => Math.max(max, nestingDepth(node)), 0);
 }
 
 export class ExcessiveOptionalNestingError extends Error {
